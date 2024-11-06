@@ -1,16 +1,48 @@
-@keyframes gradient {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
+/* Estilos anteriores mantidos... */
+
+/* Efeitos da capinha */
+.phone-case {
+    position: relative;
+    transform-style: preserve-3d;
+    perspective: 1000px;
   }
   
-  .bg-gradient-to-br {
-    background-size: 200% 200%;
-    animation: gradient 15s ease infinite;
+  .phone-case::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      45deg,
+      rgba(255,255,255,0.1),
+      rgba(255,255,255,0.05)
+    );
+    pointer-events: none;
+  }
+  
+  .phone-case::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      to bottom right,
+      transparent,
+      rgba(0,0,0,0.1)
+    );
+    pointer-events: none;
+  }
+  
+  /* Efeito de profundidade nos recortes */
+  .camera-cutout {
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  }
+  
+  /* Efeito de brilho nas bordas */
+  .case-edge {
+    background: linear-gradient(
+      45deg,
+      rgba(255,255,255,0.1),
+      rgba(255,255,255,0.05)
+    );
   }
