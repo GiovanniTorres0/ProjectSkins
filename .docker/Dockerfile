@@ -5,21 +5,25 @@ WORKDIR /app
 # Instalar dependências do sistema necessárias
 RUN apk add --no-cache libc6-compat
 
-# Copiar arquivos de configuração
+# Copiar apenas os arquivos necessários para instalar dependências
 COPY package*.json ./
-COPY config/vite.config.js ./
-COPY src/index.html ./
 
-# Instalar dependências
-RUN npm install
+# Instalar dependências incluindo TailwindCSS
+RUN npm install && \
+    npm install -D tailwindcss postcss autoprefixer && \
+    npx tailwindcss init -p
 
-# Copiar o resto do código
-COPY . .
+# Copiar os arquivos de configuração
+COPY tsconfig*.json ./
+COPY postcss.config.js ./
+COPY tailwind.config.js ./
+COPY config/ ./config/
 
-# Instalar TailwindCSS e suas dependências
-RUN npm install -D tailwindcss postcss autoprefixer
-RUN npx tailwindcss init -p
+# Copiar o código fonte
+COPY src/ ./src/
 
+# Expor a porta
 EXPOSE 5173
 
+# Comando para iniciar o servidor de desenvolvimento
 CMD ["npm", "run", "dev"]
