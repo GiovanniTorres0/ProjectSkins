@@ -1,48 +1,45 @@
-/* Estilos anteriores mantidos... */
+/* global.css */
 
-/* Efeitos da capinha */
 .phone-case {
-    position: relative;
-    transform-style: preserve-3d;
-    perspective: 1000px;
-  }
-  
-  .phone-case::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-      45deg,
-      rgba(255,255,255,0.1),
-      rgba(255,255,255,0.05)
-    );
-    pointer-events: none;
-  }
-  
-  .phone-case::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-      to bottom right,
-      transparent,
-      rgba(0,0,0,0.1)
-    );
-    pointer-events: none;
-  }
-  
-  /* Efeito de profundidade nos recortes */
-  .camera-cutout {
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-  }
-  
-  /* Efeito de brilho nas bordas */
-  .case-edge {
-    background: linear-gradient(
-      45deg,
-      rgba(255,255,255,0.1),
-      rgba(255,255,255,0.05)
-    );
-  }
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.phone-case::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    45deg,
+    rgba(255,255,255,0.1),
+    rgba(255,255,255,0.05)
+  );
+  pointer-events: none;
+}
+
+.phone-case::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom right,
+    transparent,
+    rgba(0,0,0,0.1)
+  );
+  pointer-events: none;
+}
+
+.camera-cutout {
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.case-edge {
+  background: linear-gradient(
+    45deg,
+    rgba(255,255,255,0.1),
+    rgba(255,255,255,0.05)
+  );
+}

@@ -1,25 +1,59 @@
 import React, { useState } from 'react';
 import PhoneCaseTemplate from './components/PhoneCaseTemplate';
 import ImageUploader from './components/ImageUploader';
-import { PHONE_MODELS } from './config/PhoneModels';
+import { PHONE_MODELS } from './config/models';
+import { LAYOUTS } from './config/Layouts';
+import { Step, LayoutType } from './types';
 import './styles/App.css';
-
-type Step = 'case' | 'photos' | 'filters';
-type LayoutType = 'full' | 'split-horizontal' | 'split-vertical';
-
-const LAYOUTS = [
-  { id: 'full', name: 'Imagem Única' },
-  { id: 'split-horizontal', name: 'Dividido Horizontal' },
-  { id: 'split-vertical', name: 'Dividido Vertical' }
-] as const;
 
 function App() {
   const [currentStep, setCurrentStep] = useState<Step>('case');
   const [selectedModelId, setSelectedModelId] = useState(PHONE_MODELS[0].id);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<(string | null)[]>([null, null]);
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>('full');
+  const [imageSettings, setImageSettings] = useState([
+    { scale: 1.2, position: { x: 50, y: 50 } },
+    { scale: 1.2, position: { x: 50, y: 50 } }
+  ]);
 
   const selectedModel = PHONE_MODELS.find(model => model.id === selectedModelId);
+
+  const handleNextStep = () => {
+    if (currentStep === 'case') setCurrentStep('photos');
+    else if (currentStep === 'photos') setCurrentStep('filters');
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep === 'filters') setCurrentStep('photos');
+    else if (currentStep === 'photos') setCurrentStep('case');
+  };
+
+  const handleLayoutSelect = (newLayout: LayoutType) => {
+    setSelectedLayout(newLayout);
+    if (newLayout === 'full') {
+      setUploadedImages([uploadedImages[0] || null, null]);
+      setImageSettings([
+        imageSettings[0],
+        { scale: 1.2, position: { x: 50, y: 50 } }
+      ]);
+    } else if (uploadedImages.every(img => img === null)) {
+      setUploadedImages([null, null]);
+      setImageSettings([
+        { scale: 1.2, position: { x: 50, y: 50 } },
+        { scale: 1.2, position: { x: 50, y: 50 } }
+      ]);
+    }
+  };
+
+  const handleImageUpload = (index: number, image: string) => {
+    const newImages = [...uploadedImages];
+    newImages[index] = image;
+    setUploadedImages(newImages);
+
+    const newSettings = [...imageSettings];
+    newSettings[index] = { scale: 1.2, position: { x: 50, y: 50 } };
+    setImageSettings(newSettings);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
@@ -67,8 +101,11 @@ function App() {
                 <div className="w-64 mx-auto">
                   <PhoneCaseTemplate
                     model={selectedModel}
-                    image={null}
+                    images={[null, null]}  // Não precisa mostrar imagens no preview
+                    layout="full"
+                    imageSettings={imageSettings}
                     className="w-full"
+                    isEditable={false}
                   />
                 </div>
               )}
@@ -82,44 +119,44 @@ function App() {
                 {LAYOUTS.map(layout => (
                   <button
                     key={layout.id}
-                    onClick={() => setSelectedLayout(layout.id as LayoutType)}
-                    className={`p-4 border rounded-lg ${
-                      selectedLayout === layout.id ? 'border-blue-500 bg-blue-50' : ''
-                    }`}
+                    onClick={() => handleLayoutSelect(layout.id)}
+                    className={`p-4 border rounded-lg ${selectedLayout === layout.id ? 'border-blue-500 bg-blue-50' : ''}`}
                   >
                     {layout.name}
                   </button>
                 ))}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="relative">
+              <div className="flex justify-center">
+                <div className="relative w-[280px]">
                   <PhoneCaseTemplate
                     model={selectedModel}
-                    image={uploadedImage}
-                    className="w-full max-w-sm mx-auto"
+                    images={uploadedImages}
+                    layout={selectedLayout}
+                    imageSettings={imageSettings}
+                    setImageSettings={setImageSettings}
+                    className="w-full"
+                    isEditable={true}
                   />
-                  
-                  {!uploadedImage && (
-                    <ImageUploader
-                      onImageSelect={setUploadedImage}
-                      className="absolute inset-0"
-                    />
-                  )}
-                </div>
 
-                {uploadedImage && (
-                  <div>
-                    <h2 className="text-lg font-semibold mb-3">Preview</h2>
-                    <div className="rotate-12 scale-95">
-                      <PhoneCaseTemplate
-                        model={selectedModel}
-                        image={uploadedImage}
-                        className="w-full max-w-sm mx-auto shadow-2xl"
-                      />
-                    </div>
-                  </div>
-                )}
+                  {LAYOUTS.find(l => l.id === selectedLayout)?.areas.map((area, index) => (
+                    !uploadedImages[index] && (
+                      <div
+                        key={index}
+                        className="absolute inset-0"  // Modificado para cobrir toda a área
+                        style={{
+                          backgroundColor: 'rgba(0,0,0,0.1)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <ImageUploader
+                          onImageSelect={(image) => handleImageUpload(index, image)}
+                          className="w-full h-full"
+                        />
+                      </div>
+                    )
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -128,22 +165,23 @@ function App() {
           <div className="mt-6 flex justify-between">
             {currentStep !== 'case' && (
               <button
-                onClick={() => setCurrentStep(currentStep === 'filters' ? 'photos' : 'case')}
+                onClick={handlePreviousStep}
                 className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Voltar
               </button>
             )}
-            
+
             {currentStep !== 'filters' ? (
               <button
-                onClick={() => setCurrentStep(currentStep === 'case' ? 'photos' : 'filters')}
+                onClick={handleNextStep}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors ml-auto"
+                disabled={currentStep === 'photos' && !uploadedImages.some(img => img !== null)}
               >
                 Próximo
               </button>
             ) : (
-              uploadedImage && (
+              uploadedImages[0] && (
                 <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors ml-auto">
                   Finalizar Pedido
                 </button>

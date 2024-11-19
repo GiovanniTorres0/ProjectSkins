@@ -2,8 +2,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dependências do sistema necessárias
-RUN apk add --no-cache libc6-compat
+# Usar gcompat ao invés de libc6-compat
+RUN apk add --no-cache gcompat
 
 # Copiar apenas os arquivos necessários para instalar dependências
 COPY package*.json ./

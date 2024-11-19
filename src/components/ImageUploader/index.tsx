@@ -1,97 +1,86 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 
-interface ImageUploaderProps {
-  onImageSelect: (imageUrl: string) => void;
-  className?: string;
-}
+const ImageUploader = ({ onImageSelect, className = "" }) => {
+  const handleFileChange = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ 
-  onImageSelect, 
-  className = ""
-}) => {
-  const [isDragging, setIsDragging] = useState(false);
-
-  const processImage = useCallback((file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        onImageSelect(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione apenas arquivos de imagem.');
+      return;
     }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        onImageSelect(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   }, [onImageSelect]);
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
+  const handleDragOver = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
+  const handleDrop = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
 
-    const file = e.dataTransfer.files[0];
-    processImage(file);
-  }, [processImage]);
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processImage(file);
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, solte apenas arquivos de imagem.');
+      return;
     }
-  }, [processImage]);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        onImageSelect(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [onImageSelect]);
 
   return (
-    <div 
-      className={`relative ${className}`}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragEnter}
-      onDragLeave={handleDragLeave}
+    <div
+      className={`relative group ${className}`}
+      onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div
-        className={`absolute inset-0 flex items-center justify-center
-          ${isDragging ? 'bg-blue-100/50' : ''} transition-colors rounded-lg`}
-      >
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileInput}
-          className="hidden"
-          id="imageUpload"
-        />
-        <label
-          htmlFor="imageUpload"
-          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg cursor-pointer
-            ${isDragging 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-blue-500 text-white hover:bg-blue-600'} 
-            transition-colors`}
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      />
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 bg-opacity-90 group-hover:bg-opacity-100 transition-all">
+        <svg 
+          className="w-8 h-8 text-gray-400 mb-2" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2"
         >
-          <svg
-            className="w-6 h-6"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-          <span>Arraste ou escolha uma imagem</span>
-        </label>
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+          />
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+        <p className="text-sm text-gray-500 text-center px-4">
+          Clique ou arraste uma foto
+        </p>
       </div>
     </div>
   );
