@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { PhoneModel, LayoutType, ImageSettings } from '../../types';
 import { LAYOUTS } from '../../config/Layouts';
+import { useImageGestures } from '../../hooks/useImageGestures';
 
 interface PhoneCaseTemplateProps {
   model: PhoneModel;
@@ -21,196 +22,166 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
   setImageSettings,
   className = "",
   imageFilters,
-  isEditable = false
+  isEditable = true
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [isZooming, setIsZooming] = useState(false);
-  const [zoomStart, setZoomStart] = useState(0);
-  const [isRotating, setIsRotating] = useState(false);
-  const [rotationStart, setRotationStart] = useState(0);
-
   const selectedLayout = LAYOUTS.find(l => l.id === layout);
-  if (!selectedLayout || !model) return null;
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isEditable || !setImageSettings) return;
-    e.preventDefault();
-
-    // Zoom start
-    setIsZooming(true);
-    setZoomStart(
-      Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      )
-    );
-
-    // Rotation start
-    setIsRotating(true);
-    setRotationStart(
-      Math.atan2(
-        e.touches[1].clientY - e.touches[0].clientY,
-        e.touches[1].clientX - e.touches[0].clientX
-      )
-    );
-  };
-
-  const handleZoom = (e: React.TouchEvent) => {
-    if (!isZooming || !isEditable || !setImageSettings) return;
-    e.preventDefault();
-    const currentZoom = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    const scale = currentZoom / zoomStart;
-    setImageSettings(prev => {
-      const newSettings = [...prev];
-      newSettings[activeImageIndex] = {
-        ...newSettings[activeImageIndex],
-        scale: Math.max(0.5, Math.min(3, newSettings[activeImageIndex].scale * scale))
-      };
-      return newSettings;
-    });
-    setZoomStart(currentZoom);
-  };
-
-  const handleZoomEnd = () => {
-    setIsZooming(false);
-    setIsRotating(false);
-  };
-
-  const handleRotation = (e: React.TouchEvent) => {
-    if (!isRotating || !isEditable || !setImageSettings) return;
-    e.preventDefault();
-    const currentRotation = Math.atan2(
-      e.touches[1].clientY - e.touches[0].clientY,
-      e.touches[1].clientX - e.touches[0].clientX
-    );
-    const angle = (currentRotation - rotationStart) * (180 / Math.PI);
-    setImageSettings(prev => {
-      const newSettings = [...prev];
-      newSettings[activeImageIndex] = {
-        ...newSettings[activeImageIndex],
-        rotation: angle
-      };
-      return newSettings;
-    });
-    setRotationStart(currentRotation);
-  };
-
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, index: number) => {
-    if (!isEditable || !setImageSettings) return;
-
-    e.preventDefault();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
-
-    setActiveImageIndex(index);
-    setIsDragging(true);
-    setDragStart({
-      x: x - imageSettings[index].position.x,
-      y: y - imageSettings[index].position.y
-    });
-  };
-
-  const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDragging || !isEditable || !setImageSettings) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
-
-    const newPosition = {
-      x: Math.max(0, Math.min(100, x - dragStart.x)),
-      y: Math.max(0, Math.min(100, y - dragStart.y))
-    };
-
-    setImageSettings(prev => {
-      const newSettings = [...prev];
-      newSettings[activeImageIndex] = {
-        ...newSettings[activeImageIndex],
-        position: newPosition
-      };
-      return newSettings;
-    });
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
   const hasUserImages = images.some(img => img !== null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [initialScale, setInitialScale] = useState<number>(1);
+
+  const calculateInitialScale = (imgWidth: number, imgHeight: number) => {
+    if (!containerRef.current) return 1;
+    
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    const widthRatio = containerWidth / imgWidth;
+    const heightRatio = containerHeight / imgHeight;
+    
+    // Usa a maior proporção e multiplica por um fator para garantir que a imagem preencha mais que o container
+    const scale = Math.max(widthRatio, heightRatio) * 1.1; // Ajuste esse valor conforme necessário
+    console.log('Initial Scale Calculated:', scale);
+    return scale;
+  };
+
+  // Efeito para inicializar configurações
+  useEffect(() => {
+    if (setImageSettings && images.length > imageSettings.length) {
+      setImageSettings(prev => [
+        ...prev,
+        ...Array(images.length - prev.length).fill({
+          scale: 1.2,
+          rotation: 0,
+          position: { x: 0, y: 0 },
+          aspectRatio: 1
+        })
+      ]);
+    }
+  }, [images.length, setImageSettings]);
+
+  useEffect(() => {
+    images.forEach((imageUrl, index) => {
+      if (imageUrl && setImageSettings) {
+        const img = new Image();
+        img.onload = () => {
+          const aspectRatio = img.width / img.height;
+          const calculatedInitialScale = calculateInitialScale(img.width, img.height);
+          setInitialScale(calculatedInitialScale); // Salvamos a escala inicial
+          
+          setImageSettings(prev => {
+            const newSettings = [...prev];
+            newSettings[index] = {
+              ...newSettings[index],
+              aspectRatio,
+              scale: calculatedInitialScale,
+              position: { x: 0, y: 0 }
+            };
+            return newSettings;
+          });
+        };
+        img.src = imageUrl;
+      }
+    });
+  }, [images, setImageSettings]);
+
+  const {
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleWheel
+  } = useImageGestures({
+    isEditable,
+    activeImageIndex,
+    imageSettings,
+    setImageSettings,
+    containerRef,
+    initialScale, // Passamos a escala inicial para o hook
+  });
+
+  if (!selectedLayout || !model) return null;
 
   return (
     <div className={`relative w-[280px] h-[560px] mx-auto ${className}`}>
-      <div className="absolute inset-0">
-        {/* Base branca */}
+      <div className="absolute inset-0" ref={containerRef}>
         <div className="absolute inset-0 bg-white" />
 
         {!hasUserImages ? (
           <div className="absolute inset-0">
-            <img 
-              src={model.images.preview} 
+            <img
+              src={model.images.preview}
               alt={model.name}
               className="w-full h-full object-contain"
             />
           </div>
         ) : (
-          <>
-            <div 
-              className="absolute inset-0 overflow-hidden"
-              onTouchStart={isEditable ? handleTouchStart : undefined}
-              onTouchMove={isEditable ? (e) => {
-                handleZoom(e);
-                handleRotation(e);
-              } : undefined}
-              onTouchEnd={isEditable ? handleZoomEnd : undefined}
-            >
-              {selectedLayout.areas.map((area, index) => (
-                images[index] && (
+          <div
+            className="absolute inset-0 overflow-hidden touch-none"
+            style={{ touchAction: 'none' }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleMouseUp}
+            onWheel={handleWheel}
+          >
+            {selectedLayout.areas.map((area, index) => (
+              images[index] && (
+                <div
+                  key={index}
+                  className="absolute inset-0"
+                  onClick={() => setActiveImageIndex(index)}
+                  ref={el => imageRefs.current[index] = el}
+                >
                   <div
-                    key={index}
-                    className="absolute inset-0" 
-                    style={{
-                      cursor: isEditable ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                    }}
-                    onMouseDown={isEditable ? (e) => handleDragStart(e, index) : undefined}
-                    onTouchStart={isEditable ? (e) => handleDragStart(e, index) : undefined}
-                    onMouseMove={isEditable ? handleDrag : undefined}
-                    onTouchMove={isEditable ? handleDrag : undefined}
-                    onMouseUp={isEditable ? handleDragEnd : undefined}
-                    onTouchEnd={isEditable ? handleDragEnd : undefined}
-                    onMouseLeave={isEditable ? handleDragEnd : undefined}  
+                    className="absolute inset-0 flex items-center justify-center overflow-hidden"
                   >
                     <div
-                      className="absolute inset-0"
                       style={{
-                        backgroundImage: `url(${images[index]})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: `${imageSettings[index].position.x}% ${imageSettings[index].position.y}%`,
-                        transform: `scale(${imageSettings[index].scale}) rotate(${imageSettings[index].rotation}deg)`,
-                        filter: imageFilters?.[index] || 'none',
-                      }} 
-                    />
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <img
+                        src={images[index] || ''}
+                        alt=""
+                        style={{
+                          position: 'absolute',
+                          width: 'auto',      // Mudado de 100% para auto
+                          height: 'auto',     // Mudado de 100% para auto
+                          maxWidth: 'none',   // Permite que a imagem seja maior que o container
+                          maxHeight: 'none',  // Permite que a imagem seja maior que o container
+                          objectFit: 'contain', // Mudado de cover para contain
+                          transform: `
+      translate(${imageSettings[index]?.position?.x || 0}px, ${imageSettings[index]?.position?.y || 0}px)
+      rotate(${imageSettings[index]?.rotation || 0}deg)
+      scale(${imageSettings[index]?.scale || 1})
+    `,
+                          filter: imageFilters?.[index] || 'none',
+                          transformOrigin: 'center',
+                          willChange: 'transform',
+                          cursor: isEditable && imageSettings[index]?.scale > 1 ? 'move' : 'default',
+                        }}
+                      />
+                    </div>
                   </div>
-                )
-              ))}
-            </div>
-          </>
+                </div>
+              )
+            ))}
+          </div>
         )}
 
-        {/* Borda do dispositivo */}
         <img
           src={model.images.border}
           alt={`${model.name} border`}
