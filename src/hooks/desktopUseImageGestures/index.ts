@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type { ImageSettings } from '../../types';
+import { updateImageSettings } from '../../utils/desktopGestureUtils';
 
 interface UseImageGesturesProps {
   isEditable: boolean;
@@ -24,61 +25,21 @@ export const useImageGestures = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  const calculateMaxOffset = (scale: number, aspectRatio: number): { maxX: number; maxY: number } => {
-    if (!containerRef.current) return { maxX: 0, maxY: 0 };
+  const updateImage = (changes: Partial<ImageSettings>) => {
+    if (!setImageSettings || !containerRef.current) return;
 
     const container = containerRef.current;
-    const containerAspectRatio = container.clientWidth / container.clientHeight;
-
-    let maxX = 0;
-    let maxY = 0;
-
-    if (aspectRatio > containerAspectRatio) {
-      const imageWidth = container.clientHeight * aspectRatio;
-      maxX = (imageWidth - container.clientWidth) / 2;
-    } else {
-      const imageHeight = container.clientWidth / aspectRatio;
-      maxY = (imageHeight - container.clientHeight) / 2;
-    }
-
-    return {
-      maxX: maxX * (scale - initialScale),
-      maxY: maxY * (scale - initialScale)
-    };
-  };
-
-  const constrainMovement = (position: { x: number; y: number }, scale: number, aspectRatio: number) => {
-    const { maxX, maxY } = calculateMaxOffset(scale, aspectRatio);
-
-    return {
-      x: Math.max(-maxX, Math.min(maxX, position.x)),
-      y: Math.max(-maxY, Math.min(maxY, position.y))
-    };
-  };
-
-  const updateImage = (changes: Partial<ImageSettings>) => {
-    if (!setImageSettings) return;
-
+    
     setImageSettings(prev => {
       const newSettings = [...prev];
-      const currentSettings = newSettings[activeImageIndex];
-      const aspectRatio = currentSettings.aspectRatio;
-
-      const newScale = changes.scale
-        ? Math.max(initialScale, Math.min(MAX_SCALE, changes.scale))
-        : currentSettings.scale;
-
-      const newPosition = changes.position
-        ? constrainMovement(changes.position, newScale, aspectRatio)
-        : constrainMovement(currentSettings.position, newScale, aspectRatio);
-
-      newSettings[activeImageIndex] = {
-        ...currentSettings,
-        ...changes,
-        scale: newScale,
-        position: newPosition
-      };
-
+      newSettings[activeImageIndex] = updateImageSettings(
+        newSettings[activeImageIndex],
+        changes,
+        container.clientWidth,
+        container.clientHeight,
+        initialScale,
+        MAX_SCALE
+      );
       return newSettings;
     });
   };
@@ -103,7 +64,7 @@ export const useImageGestures = ({
     if (!isDragging || !isEditable) return;
 
     const currentScale = imageSettings[activeImageIndex].scale;
-    if (currentScale <= 1) return;
+    if (currentScale <= initialScale) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;

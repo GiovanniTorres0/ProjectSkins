@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { PhoneModel, LayoutType, ImageSettings } from '../../types';
 import { LAYOUTS } from '../../config/Layouts';
-import { useImageGestures } from '../../hooks/useImageGestures';
-import { useImageGesturesMobile } from '../../hooks/useImageGesturesMobile';
+import { useImageGestures } from '../../hooks/desktopUseImageGestures';
+import { useImageGesturesMobile } from '../../hooks/mobileUseImageGestures';
 
 interface PhoneCaseTemplateProps {
   model: PhoneModel;
