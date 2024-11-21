@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { PhoneModel, LayoutType, ImageSettings } from '../../types';
 import { LAYOUTS } from '../../config/Layouts';
 import { useImageGestures } from '../../hooks/useImageGestures';
+import { useImageGesturesMobile } from '../../hooks/useImageGesturesMobile';
 
 interface PhoneCaseTemplateProps {
   model: PhoneModel;
@@ -33,21 +34,19 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
 
   const calculateInitialScale = (imgWidth: number, imgHeight: number) => {
     if (!containerRef.current) return 1;
-    
+
     const container = containerRef.current;
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
-    
+
     const widthRatio = containerWidth / imgWidth;
     const heightRatio = containerHeight / imgHeight;
-    
-    // Usa a maior proporção e multiplica por um fator para garantir que a imagem preencha mais que o container
-    const scale = Math.max(widthRatio, heightRatio) * 1.1; // Ajuste esse valor conforme necessário
+
+    const scale = Math.max(widthRatio, heightRatio) * 1.1;
     console.log('Initial Scale Calculated:', scale);
     return scale;
   };
 
-  // Efeito para inicializar configurações
   useEffect(() => {
     if (setImageSettings && images.length > imageSettings.length) {
       setImageSettings(prev => [
@@ -69,8 +68,8 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
         img.onload = () => {
           const aspectRatio = img.width / img.height;
           const calculatedInitialScale = calculateInitialScale(img.width, img.height);
-          setInitialScale(calculatedInitialScale); // Salvamos a escala inicial
-          
+          setInitialScale(calculatedInitialScale);
+
           setImageSettings(prev => {
             const newSettings = [...prev];
             newSettings[index] = {
@@ -91,8 +90,6 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleTouchStart,
-    handleTouchMove,
     handleWheel
   } = useImageGestures({
     isEditable,
@@ -100,7 +97,20 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
     imageSettings,
     setImageSettings,
     containerRef,
-    initialScale, // Passamos a escala inicial para o hook
+    initialScale,
+  });
+
+  const {
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd
+  } = useImageGesturesMobile({
+    isEditable,
+    activeImageIndex,
+    imageSettings,
+    setImageSettings,
+    containerRef,
+    initialScale,
   });
 
   if (!selectedLayout || !model) return null;
@@ -126,9 +136,6 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleMouseUp}
             onWheel={handleWheel}
           >
             {selectedLayout.areas.map((area, index) => (
@@ -152,17 +159,20 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
                         justifyContent: 'center',
                         overflow: 'hidden',
                       }}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
                     >
                       <img
                         src={images[index] || ''}
                         alt=""
                         style={{
                           position: 'absolute',
-                          width: 'auto',      // Mudado de 100% para auto
-                          height: 'auto',     // Mudado de 100% para auto
-                          maxWidth: 'none',   // Permite que a imagem seja maior que o container
-                          maxHeight: 'none',  // Permite que a imagem seja maior que o container
-                          objectFit: 'contain', // Mudado de cover para contain
+                          width: 'auto',
+                          height: 'auto',
+                          maxWidth: 'none',
+                          maxHeight: 'none',
+                          objectFit: 'contain',
                           transform: `
       translate(${imageSettings[index]?.position?.x || 0}px, ${imageSettings[index]?.position?.y || 0}px)
       rotate(${imageSettings[index]?.rotation || 0}deg)
@@ -172,6 +182,7 @@ const PhoneCaseTemplate: React.FC<PhoneCaseTemplateProps> = ({
                           transformOrigin: 'center',
                           willChange: 'transform',
                           cursor: isEditable && imageSettings[index]?.scale > 1 ? 'move' : 'default',
+                          touchAction: 'none',
                         }}
                       />
                     </div>
