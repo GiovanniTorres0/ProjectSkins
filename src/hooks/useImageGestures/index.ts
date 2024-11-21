@@ -24,28 +24,34 @@ export const useImageGestures = ({
   const dragStart = useRef({ x: 0, y: 0 });
   const initialTouch = useRef({ x: 0, y: 0, scale: 1, angle: 0 });
 
-  const calculateMaxOffset = (scale: number): { maxX: number; maxY: number } => {
-    if (scale <= initialScale) {
-      return { maxX: 0, maxY: 0 };
-    }
+  const calculateMaxOffset = (scale: number, aspectRatio: number): { maxX: number; maxY: number } => {
+    if (!containerRef.current) return { maxX: 0, maxY: 0 };
 
     const container = containerRef.current;
-    const imageSize = {
-      width: container.clientWidth * scale,
-      height: container.clientHeight * scale
-    };
+    const containerAspectRatio = container.clientWidth / container.clientHeight;
+
+    let maxX = 0;
+    let maxY = 0;
+
+    if (aspectRatio > containerAspectRatio) {
+      // A imagem é mais larga que o container
+      const imageWidth = container.clientHeight * aspectRatio;
+      maxX = (imageWidth - container.clientWidth) / 2;
+    } else {
+      // A imagem é mais alta que o container
+      const imageHeight = container.clientWidth / aspectRatio;
+      maxY = (imageHeight - container.clientHeight) / 2;
+    }
 
     return {
-      maxX: (imageSize.width - container.clientWidth) / 2,
-      maxY: (imageSize.height - container.clientHeight) / 2
+      maxX: maxX * (scale - initialScale),
+      maxY: maxY * (scale - initialScale)
     };
   };
 
-  const constrainMovement = (position: { x: number; y: number }, scale: number) => {
-    if (scale <= initialScale) {
-      return { x: 0, y: 0 };
-    }
-    const { maxX, maxY } = calculateMaxOffset(scale);
+  const constrainMovement = (position: { x: number; y: number }, scale: number, aspectRatio: number) => {
+    const { maxX, maxY } = calculateMaxOffset(scale, aspectRatio);
+
     return {
       x: Math.max(-maxX, Math.min(maxX, position.x)),
       y: Math.max(-maxY, Math.min(maxY, position.y))
@@ -58,23 +64,23 @@ export const useImageGestures = ({
     setImageSettings(prev => {
       const newSettings = [...prev];
       const currentSettings = newSettings[activeImageIndex];
-
+      const aspectRatio = currentSettings.aspectRatio;
       // Primeiro atualize a escala se houver uma nova
       const newScale = changes.scale
-      ? Math.max(initialScale, Math.min(MAX_SCALE, changes.scale)) // Usar initialScale aqui
-      : currentSettings.scale;
+        ? Math.max(initialScale, Math.min(MAX_SCALE, changes.scale)) // Usar initialScale aqui
+        : currentSettings.scale;
 
       // Então calcule e restrinja a posição baseado na nova escala
       const newPosition = changes.position
-        ? constrainMovement(changes.position, newScale)
-        : constrainMovement(currentSettings.position, newScale);
+        ? constrainMovement(changes.position, newScale, aspectRatio)
+        : constrainMovement(currentSettings.position, newScale, aspectRatio);
 
-        newSettings[activeImageIndex] = {
-          ...currentSettings,
-          ...changes,
-          scale: newScale,
-          position: newPosition
-        };
+      newSettings[activeImageIndex] = {
+        ...currentSettings,
+        ...changes,
+        scale: newScale,
+        position: newPosition
+      };
 
       return newSettings;
     });
@@ -212,11 +218,11 @@ export const useImageGestures = ({
   const handleWheel = (e: React.WheelEvent) => {
     if (!isEditable) return;
     e.preventDefault();
-    
+
     const currentScale = imageSettings[activeImageIndex].scale;
     const scaleDelta = 1 - (e.deltaY * WHEEL_SENSITIVITY);
     const targetScale = currentScale * scaleDelta;
-  
+
     updateImage({
       scale: Math.max(initialScale, Math.min(MAX_SCALE, targetScale))
     });
