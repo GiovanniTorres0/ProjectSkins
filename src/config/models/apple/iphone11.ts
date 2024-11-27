@@ -1,4 +1,4 @@
-import { PhoneModel } from '../../types';
+import { PhoneModel } from '../../../types';
 
 export const iphone11: PhoneModel = {
   id: 'iphone11',

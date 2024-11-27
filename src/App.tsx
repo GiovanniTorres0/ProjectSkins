@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import PhoneCaseTemplate from './components/PhoneCaseTemplate';
 import ImageUploader from './components/ImageUploader';
+import BrandCategories from './components/BrandCategories';
 import { PHONE_MODELS } from './config/models';
 import { LAYOUTS } from './config/Layouts';
 import { Step, LayoutType } from './types';
 import './styles/App.css';
 
+// Expandir o tipo Step para incluir a seleção de marca
+type ExtendedStep = 'brand' | Step;
+
 function App() {
-  const [currentStep, setCurrentStep] = useState<Step>('case');
+  const [currentStep, setCurrentStep] = useState<ExtendedStep>('brand');
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState(PHONE_MODELS[0].id);
   const [uploadedImages, setUploadedImages] = useState<(string | null)[]>([null, null]);
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>('full');
@@ -19,13 +24,20 @@ function App() {
   const selectedModel = PHONE_MODELS.find(model => model.id === selectedModelId);
 
   const handleNextStep = () => {
-    if (currentStep === 'case') setCurrentStep('photos');
+    if (currentStep === 'brand') setCurrentStep('case');
+    else if (currentStep === 'case') setCurrentStep('photos');
     else if (currentStep === 'photos') setCurrentStep('filters');
   };
 
   const handlePreviousStep = () => {
     if (currentStep === 'filters') setCurrentStep('photos');
     else if (currentStep === 'photos') setCurrentStep('case');
+    else if (currentStep === 'case') setCurrentStep('brand');
+  };
+
+  const handleBrandSelect = (brandId: string) => {
+    setSelectedBrand(brandId);
+    handleNextStep();
   };
 
   const handleLayoutSelect = (newLayout: LayoutType) => {
@@ -62,26 +74,36 @@ function App() {
           {/* Steps Navigation */}
           <div className="flex mb-6 border-b">
             <button
+              onClick={() => setCurrentStep('brand')}
+              className={`px-4 py-2 ${currentStep === 'brand' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
+            >
+              1 • Marca
+            </button>
+            <button
               onClick={() => setCurrentStep('case')}
               className={`px-4 py-2 ${currentStep === 'case' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
             >
-              1 • Case
+              2 • Modelo
             </button>
             <button
               onClick={() => setCurrentStep('photos')}
               className={`px-4 py-2 ${currentStep === 'photos' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
             >
-              2 • Fotos
+              3 • Fotos
             </button>
             <button
               onClick={() => setCurrentStep('filters')}
               className={`px-4 py-2 ${currentStep === 'filters' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
             >
-              3 • Filtros
+              4 • Filtros
             </button>
           </div>
 
           {/* Step Content */}
+          {currentStep === 'brand' && (
+            <BrandCategories onSelectBrand={handleBrandSelect} />
+          )}
+
           {currentStep === 'case' && (
             <div>
               <h2 className="text-lg font-semibold mb-3">Escolha o modelo</h2>
@@ -101,7 +123,7 @@ function App() {
                 <div className="w-64 mx-auto">
                   <PhoneCaseTemplate
                     model={selectedModel}
-                    images={[null, null]}  // Não precisa mostrar imagens no preview
+                    images={[null, null]}
                     layout="full"
                     imageSettings={imageSettings}
                     className="w-full"
@@ -143,7 +165,7 @@ function App() {
                     !uploadedImages[index] && (
                       <div
                         key={index}
-                        className="absolute inset-0"  // Modificado para cobrir toda a área
+                        className="absolute inset-0"
                         style={{
                           backgroundColor: 'rgba(0,0,0,0.1)',
                           cursor: 'pointer'
@@ -163,7 +185,7 @@ function App() {
 
           {/* Navigation Buttons */}
           <div className="mt-6 flex justify-between">
-            {currentStep !== 'case' && (
+            {currentStep !== 'brand' && (
               <button
                 onClick={handlePreviousStep}
                 className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"

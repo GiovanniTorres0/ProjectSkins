@@ -33,6 +33,7 @@ export interface PhoneModelImages {
 
 export interface PhoneModel {
   id: string;
+  brand: string;
   name: string;
   dimensions: {
     width: number;
