@@ -1,43 +1,54 @@
 import React, { useState } from 'react';
-import PhoneCaseTemplate from './components/PhoneCaseTemplate';
-import ImageUploader from './components/ImageUploader';
-import BrandCategories from './components/BrandCategories';
-import { PHONE_MODELS } from './config/models';
+import {
+  PhoneCaseTemplate,
+  ImageUploader,
+  BrandCategories,
+  ModelSelection
+} from './components';
+import { getModelById } from './config/models';
 import { LAYOUTS } from './config/Layouts';
-import { Step, LayoutType } from './types';
+import { Step, LayoutType, ImageSettings } from './types';
 import './styles/App.css';
 
-// Expandir o tipo Step para incluir a seleção de marca
-type ExtendedStep = 'brand' | Step;
+type ExtendedStep = 'brand' | 'model' | Step;
 
 function App() {
+  // Estados
   const [currentStep, setCurrentStep] = useState<ExtendedStep>('brand');
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [selectedModelId, setSelectedModelId] = useState(PHONE_MODELS[0].id);
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<(string | null)[]>([null, null]);
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>('full');
-  const [imageSettings, setImageSettings] = useState([
-    { scale: 1.2, position: { x: 50, y: 50 } },
-    { scale: 1.2, position: { x: 50, y: 50 } }
+  const [imageSettings, setImageSettings] = useState<ImageSettings[]>([
+    { scale: 1.2, rotation: 0, position: { x: 0, y: 0 }, aspectRatio: 1 },
+    { scale: 1.2, rotation: 0, position: { x: 0, y: 0 }, aspectRatio: 1 }
   ]);
 
-  const selectedModel = PHONE_MODELS.find(model => model.id === selectedModelId);
+  const selectedModel = selectedModelId ? getModelById(selectedModelId) : null;
 
   const handleNextStep = () => {
-    if (currentStep === 'brand') setCurrentStep('case');
-    else if (currentStep === 'case') setCurrentStep('photos');
+    if (currentStep === 'brand') setCurrentStep('model');
+    else if (currentStep === 'model') setCurrentStep('photos');
     else if (currentStep === 'photos') setCurrentStep('filters');
   };
 
   const handlePreviousStep = () => {
     if (currentStep === 'filters') setCurrentStep('photos');
-    else if (currentStep === 'photos') setCurrentStep('case');
-    else if (currentStep === 'case') setCurrentStep('brand');
+    else if (currentStep === 'photos') setCurrentStep('model');
+    else if (currentStep === 'model') {
+      setCurrentStep('brand');
+      setSelectedBrandId(null);
+    }
   };
 
   const handleBrandSelect = (brandId: string) => {
-    setSelectedBrand(brandId);
-    handleNextStep();
+    setSelectedBrandId(brandId);
+    setCurrentStep('model');
+  };
+
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+    setCurrentStep('photos');
   };
 
   const handleLayoutSelect = (newLayout: LayoutType) => {
@@ -46,13 +57,7 @@ function App() {
       setUploadedImages([uploadedImages[0] || null, null]);
       setImageSettings([
         imageSettings[0],
-        { scale: 1.2, position: { x: 50, y: 50 } }
-      ]);
-    } else if (uploadedImages.every(img => img === null)) {
-      setUploadedImages([null, null]);
-      setImageSettings([
-        { scale: 1.2, position: { x: 50, y: 50 } },
-        { scale: 1.2, position: { x: 50, y: 50 } }
+        { scale: 1.2, rotation: 0, position: { x: 0, y: 0 }, aspectRatio: 1 }
       ]);
     }
   };
@@ -63,7 +68,12 @@ function App() {
     setUploadedImages(newImages);
 
     const newSettings = [...imageSettings];
-    newSettings[index] = { scale: 1.2, position: { x: 50, y: 50 } };
+    newSettings[index] = { 
+      scale: 1.2, 
+      rotation: 0, 
+      position: { x: 0, y: 0 }, 
+      aspectRatio: 1 
+    };
     setImageSettings(newSettings);
   };
 
@@ -73,30 +83,29 @@ function App() {
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           {/* Steps Navigation */}
           <div className="flex mb-6 border-b">
-            <button
-              onClick={() => setCurrentStep('brand')}
-              className={`px-4 py-2 ${currentStep === 'brand' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
-            >
-              1 • Marca
-            </button>
-            <button
-              onClick={() => setCurrentStep('case')}
-              className={`px-4 py-2 ${currentStep === 'case' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
-            >
-              2 • Modelo
-            </button>
-            <button
-              onClick={() => setCurrentStep('photos')}
-              className={`px-4 py-2 ${currentStep === 'photos' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
-            >
-              3 • Fotos
-            </button>
-            <button
-              onClick={() => setCurrentStep('filters')}
-              className={`px-4 py-2 ${currentStep === 'filters' ? 'border-b-2 border-blue-500 text-blue-500' : ''}`}
-            >
-              4 • Filtros
-            </button>
+            {[
+              { id: 'brand', label: '1 • Marca' },
+              { id: 'model', label: '2 • Modelo' },
+              { id: 'photos', label: '3 • Fotos' },
+              { id: 'filters', label: '4 • Filtros' }
+            ].map((step) => (
+              <button
+                key={step.id}
+                onClick={() => setCurrentStep(step.id as ExtendedStep)}
+                disabled={!selectedBrandId && step.id !== 'brand'}
+                className={`px-4 py-2 ${
+                  currentStep === step.id 
+                    ? 'border-b-2 border-blue-500 text-blue-500' 
+                    : 'text-gray-500'
+                } ${
+                  !selectedBrandId && step.id !== 'brand'
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:text-blue-500'
+                }`}
+              >
+                {step.label}
+              </button>
+            ))}
           </div>
 
           {/* Step Content */}
@@ -104,34 +113,12 @@ function App() {
             <BrandCategories onSelectBrand={handleBrandSelect} />
           )}
 
-          {currentStep === 'case' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Escolha o modelo</h2>
-              <select
-                value={selectedModelId}
-                onChange={(e) => setSelectedModelId(e.target.value)}
-                className="w-full p-2 border rounded-lg mb-4"
-              >
-                {PHONE_MODELS.map(model => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
-
-              {selectedModel && (
-                <div className="w-64 mx-auto">
-                  <PhoneCaseTemplate
-                    model={selectedModel}
-                    images={[null, null]}
-                    layout="full"
-                    imageSettings={imageSettings}
-                    className="w-full"
-                    isEditable={false}
-                  />
-                </div>
-              )}
-            </div>
+          {currentStep === 'model' && selectedBrandId && (
+            <ModelSelection
+              brandId={selectedBrandId}
+              onSelectModel={handleModelSelect}
+              onBack={handlePreviousStep}
+            />
           )}
 
           {currentStep === 'photos' && selectedModel && (
@@ -142,7 +129,9 @@ function App() {
                   <button
                     key={layout.id}
                     onClick={() => handleLayoutSelect(layout.id)}
-                    className={`p-4 border rounded-lg ${selectedLayout === layout.id ? 'border-blue-500 bg-blue-50' : ''}`}
+                    className={`p-4 border rounded-lg ${
+                      selectedLayout === layout.id ? 'border-blue-500 bg-blue-50' : ''
+                    }`}
                   >
                     {layout.name}
                   </button>
@@ -183,6 +172,14 @@ function App() {
             </div>
           )}
 
+          {currentStep === 'filters' && selectedModel && uploadedImages[0] && (
+            <div>
+              {/* Implementar filtros aqui */}
+              <h2 className="text-lg font-semibold mb-3">Aplique filtros à sua imagem</h2>
+              {/* ... conteúdo dos filtros ... */}
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="mt-6 flex justify-between">
             {currentStep !== 'brand' && (
@@ -198,7 +195,10 @@ function App() {
               <button
                 onClick={handleNextStep}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors ml-auto"
-                disabled={currentStep === 'photos' && !uploadedImages.some(img => img !== null)}
+                disabled={
+                  (currentStep === 'model' && !selectedModelId) ||
+                  (currentStep === 'photos' && !uploadedImages.some(img => img !== null))
+                }
               >
                 Próximo
               </button>

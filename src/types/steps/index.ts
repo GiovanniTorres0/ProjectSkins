@@ -1,0 +1,1 @@
+export type Step = 'case' | 'photos' | 'filters';
